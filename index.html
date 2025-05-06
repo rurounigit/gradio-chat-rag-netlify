@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Minimal ChatInterface Test (.launch())</title>
+    <title>Angela Han AI Chat (gr.Interface Method)</title>
 
     <!-- Load Gradio-lite JS and CSS from CDN (latest) -->
     <link
@@ -20,42 +20,139 @@
     ></script>
 
     <style>
-      body { margin: 0; padding: 0; background-color: #f0f0f0; }
-      gradio-lite { min-height: 100vh; }
+      body {
+        font-family: sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f0f0f0;
+      }
+      gradio-lite {
+        min-height: 100vh;
+      }
+      /* Add some basic styling for the chat display */
+      .message-user { color: blue; margin-bottom: 5px; white-space: pre-wrap; }
+      .message-bot { color: green; margin-bottom: 15px; white-space: pre-wrap; }
     </style>
   </head>
   <body>
     <gradio-lite>
       <script type="pyodide">
-import gradio as gr
-# NO asyncio, json, or pyodide_http
+        import gradio as gr
+        import json
+        import asyncio
+        import html  # For escaping HTML in manual display
 
-print("Minimal ChatInterface Test: Starting Python code.")
+        import pyodide_http
+        pyodide_http.patch_all()
 
-# Define a simple SYNCHRONOUS function
-# NOTE: The history format is different for type="messages"
-def simple_chat_placeholder(message, history):
-    print(f"Simple Chat Placeholder: Received message='{message}', history={history}")
-    # History is like: [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]
-    response = f"Echo: {message}"
-    print(f"Simple Chat Placeholder: Returning '{response}'")
-    return response
+        NETLIFY_FUNCTION_ENDPOINT = "/.netlify/functions/rag-proxy"
 
-# Define the ChatInterface using the placeholder function
-chat_ui = gr.ChatInterface(
-    fn=simple_chat_placeholder,
-    title="Minimal ChatInterface Test",
-    description="Testing ONLY if ChatInterface component loads with .launch()",
-    type="messages", # Use recommended type
-    chatbot=gr.Chatbot(height=500)
-)
+        print("Gradio-lite: Pyodide environment starting (gr.Interface method).")
 
-print("Minimal ChatInterface Test: Interface defined. Calling .launch()...")
+        # Helper function to format history for display (e.g., Markdown/HTML)
+        def format_history_md(history):
+            if not history:
+                return "*Chat history is empty.*"
 
-# Use the .launch() method
-chat_ui.launch()
+            formatted = ""
+            for user_msg, ai_msg in history:
+                if user_msg is not None:
+                    # Escape potentially problematic characters for Markdown
+                    escaped_user = user_msg.replace('*', '\\*').replace('_', '\\_').replace('`', '\\`')
+                    formatted += f"**You:**\n{escaped_user}\n\n"
+                if ai_msg is not None:
+                    escaped_ai = ai_msg.replace('*', '\\*').replace('_', '\\_').replace('`', '\\`')
+                    formatted += f"**Angela AI:**\n{escaped_ai}\n\n---\n\n"
+            return formatted.strip()
 
-print("Minimal ChatInterface Test: .launch() called. UI should appear if successful.")
+        # Define the core chat logic function for gr.Interface
+        async def interface_chat_logic(message, history_state):
+            print(f"Interface Logic: Received message='{message}'")
+            print(f"Interface Logic: Current history_state={history_state}")
+
+            # Ensure history_state is a list (it should be from gr.State)
+            current_history = list(history_state) if history_state is not None else []
+
+            # Append the new user message (temporarily store None for bot response)
+            current_history.append([message, None])
+
+            # Format history for display *before* backend call (optional, shows user msg immediately)
+            # display_history = format_history_md(current_history)
+
+            # Prepare data for the backend function call
+            headers = {"Content-Type": "application/json"}
+            # Send only the history needed for context (exclude the current None placeholder for bot)
+            backend_history_to_send = current_history[:-1]
+            payload = json.dumps({
+                "message": message,
+                "history": backend_history_to_send
+            })
+
+            ai_response_content = "*Thinking...*" # Placeholder while waiting
+
+            try:
+                backend_response = await pyodide_http.pyfetch(
+                    url=NETLIFY_FUNCTION_ENDPOINT,
+                    method="POST",
+                    headers=headers,
+                    body=payload
+                )
+
+                if backend_response.ok:
+                    data = await backend_response.json()
+                    ai_response_content = data.get("answer", "Error: No answer in response.")
+                    print(f"Interface Logic: Received AI response: '{ai_response_content[:50]}...'")
+                else:
+                    error_text = await backend_response.string()
+                    print(f"Interface Logic: Error from backend: Status {backend_response.status}, Body: {error_text}")
+                    ai_response_content = f"Error from backend (Status {backend_response.status})"
+
+            except Exception as e:
+                print(f"Interface Logic: Network or other error: {e}")
+                import traceback
+                print(traceback.format_exc())
+                ai_response_content = f"Error contacting backend: {type(e).__name__}"
+
+            # Update the last entry in history with the actual AI response
+            current_history[-1][1] = ai_response_content
+
+            # Format the final history for display
+            final_display_history = format_history_md(current_history)
+
+            # Return the formatted display string AND the updated history state list
+            # Also clear the input textbox by returning None/empty string for it
+            return final_display_history, current_history, ""
+
+        # Define the Gradio Interface
+        # Use gr.State to manage history persistence between calls
+        with gr.Blocks(theme=gr.themes.Default()) as demo: # Use Blocks for layout control
+             gr.Markdown("# Chat with Angela Han AI (gr.Interface Style)")
+
+             # State component to store chat history (list of lists: [[user, bot], ...])
+             chatbot_state = gr.State([])
+
+             # Output component to display formatted chat history
+             chatbot_display = gr.Markdown(label="Conversation")
+
+             # Input textbox for user message
+             message_input = gr.Textbox(label="Your Message", placeholder="Type your message here...")
+
+             # Use Interface within Blocks to connect components
+             gr.Interface(
+                 fn=interface_chat_logic,
+                 inputs=[message_input, chatbot_state],
+                 # Outputs must match the return order of the function
+                 outputs=[chatbot_display, chatbot_state, message_input],
+                 allow_flagging="never",
+                 # We handle submission via the Interface logic, no separate button needed here usually
+             )
+
+        print("Gradio-lite: gr.Interface defined within gr.Blocks. Calling .launch()...")
+
+        # --- Use .launch() on the Blocks object ---
+        demo.launch()
+
+        print("Gradio-lite: .launch() called. UI should appear.")
 
       </script>
     </gradio-lite>
