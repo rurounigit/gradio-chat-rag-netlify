@@ -1,15 +1,9 @@
 # netlify.toml
 [build]
-  # No build command needed for the frontend (it's just index.html)
-  publish = "." # Serve index.html from the root
-  functions = "netlify/functions" # Directory for serverless functions
+  publish = "."
+  functions = "netlify/functions"
 
-[functions]
-  # Specify Node bundler for JS functions if you had any (not needed here)
-  # node_bundler = "esbuild"
-
-# Tell Netlify to use the Python runtime for functions in this directory
-[functions."rag-proxy"] # Match the directory name of your function
+[functions."rag-proxy"] # Must match the directory name containing rag_proxy.py
    runtime = "python"
-   # Included files tells Netlify to package these with the function
+   # Ensure this path is relative *to the root of the repository*
    included_files = ["netlify/functions/rag-proxy/faiss_index_google.zip"]
