@@ -1,182 +1,67 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Angela Han AI Chat (gr.Interface Workaround)</title>
-
-    <!-- Load Gradio-lite JS and CSS from CDN (latest) -->
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@gradio/theme/dist/theme.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@gradio/lite/dist/lite.css"
-    />
-    <script
-      type="module"
-      src="https://cdn.jsdelivr.net/npm/@gradio/lite/dist/lite.js"
-    ></script>
-
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat with Angela AI (htmx)</title>
+    <!-- Include htmx library -->
+    <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
+    <!-- Basic Styling -->
     <style>
-      body {
-        font-family: sans-serif;
-        margin: 0;
-        padding: 0;
-        background-color: #f0f0f0;
-      }
-      gradio-lite {
-        min-height: 100vh;
-      }
-      /* Optional: Basic styling for Markdown chat display */
-      .message-user { white-space: pre-wrap; margin-bottom: 0.5em; }
-      .message-bot { white-space: pre-wrap; margin-bottom: 1em; padding-bottom: 1em; border-bottom: 1px solid #eee;}
+        body { font-family: sans-serif; margin: 20px; display: flex; flex-direction: column; height: calc(100vh - 40px); }
+        #chat-container { flex-grow: 1; border: 1px solid #ccc; overflow-y: auto; padding: 10px; margin-bottom: 10px; background-color: #f9f9f9; }
+        #chat-form { display: flex; }
+        #chat-form input[type="text"] { flex-grow: 1; padding: 8px; margin-right: 5px; border: 1px solid #ccc; }
+        #chat-form button { padding: 8px 15px; border: none; background-color: #007bff; color: white; cursor: pointer; }
+        #chat-form button:hover { background-color: #0056b3; }
+        .message { margin-bottom: 10px; padding: 8px; border-radius: 5px; line-height: 1.4; }
+        .message-user { background-color: #e1f5fe; border-left: 3px solid #0288d1; }
+        .message-bot { background-color: #e8f5e9; border-left: 3px solid #4caf50; }
+        .message strong { display: block; margin-bottom: 3px; font-size: 0.9em; color: #555; }
+        .error { background-color: #ffcdd2; border-left: 3px solid #f44336; color: #b71c1c; }
     </style>
-  </head>
-  <body>
-    <gradio-lite>
-      <script type="pyodide">
-        import gradio as gr
-        import json
-        import asyncio
-        import html  # Using standard html library for escaping
+</head>
+<body>
 
-        import pyodide_http
-        pyodide_http.patch_all()
+    <h1>Chat with Angela AI (htmx Demo)</h1>
+    <p>Ask a question below. History is not yet implemented.</p>
 
-        NETLIFY_FUNCTION_ENDPOINT = "/.netlify/functions/rag-proxy"
+    <!-- Container where chat messages will be appended -->
+    <div id="chat-container">
+        <div id="chat-output">
+            <!-- Chat messages go here -->
+            <div class="message message-bot"><strong>Angela AI:</strong><br>Hi there! Ask me something.</div>
+        </div>
+    </div>
 
-        print("Gradio-lite: Pyodide starting (gr.Interface workaround).")
+    <!-- Input form -->
+    <form id="chat-form"
+          hx-post="/.netlify/functions/rag-proxy"
+          hx-target="#chat-output"
+          hx-swap="beforeend"
+          hx-indicator="#spinner"
+          hx-on::after-request="
+            this.reset();
+            document.getElementById('chat-container').scrollTop = document.getElementById('chat-container').scrollHeight;
+          ">
+          <!--
+            hx-post: Sends form data to the backend function.
+            hx-target: Puts the HTML response into the element with id="chat-output".
+            hx-swap: Appends the response to the end of the target.
+            hx-indicator: Shows the spinner during the request.
+            hx-on::after-request: Resets the form and scrolls chat down after request finishes.
+           -->
+        <input type="text" name="message" placeholder="Ask something..." required autofocus>
+        <button type="submit">
+            Send
+            <span id="spinner" class="htmx-indicator">⏳</span> <!-- Simple loading indicator -->
+        </button>
+    </form>
 
-        # Helper function to format history for Markdown display
-        def format_history_md(history):
-            if not history:
-                return "*Begin Conversation...*"
+    <script>
+      // Optional: Add smooth scrolling if desired
+      // Or handle more complex UI updates if needed later
+    </script>
 
-            formatted = ""
-            for user_msg, ai_msg in history:
-                # Escape HTML special characters for safety when rendering Markdown
-                if user_msg is not None:
-                    escaped_user = html.escape(user_msg)
-                    # Using Markdown emphasis and paragraph breaks
-                    formatted += f"**You:**\n\n<p class='message-user'>{escaped_user}</p>\n\n"
-                if ai_msg is not None:
-                    escaped_ai = html.escape(ai_msg)
-                    formatted += f"**Angela AI:**\n\n<p class='message-bot'>{escaped_ai}</p>\n\n---\n"
-            return formatted.strip()
-
-        # Core chat logic function called by the embedded Interface
-        async def interface_chat_logic(message, history_state):
-            # Ensure message is not empty
-            if not message or not message.strip():
-                # Return current state without change if message is empty
-                # And maybe indicate this in the display? Or just do nothing.
-                print("Interface Logic: Empty message received.")
-                current_history = list(history_state) if history_state is not None else []
-                display_history = format_history_md(current_history)
-                return display_history, current_history, "" # Return current state, clear input
-
-            print(f"Interface Logic: Received message='{message}'")
-
-            # Ensure history_state is a list (it should be from gr.State)
-            current_history = list(history_state) if history_state is not None else []
-            print(f"Interface Logic: Current history_state (len {len(current_history)})={current_history}")
-
-            # Append the new user message (temporarily store None for bot response)
-            current_history.append([str(message), None]) # Ensure message is string
-
-            # Prepare data for the backend function call
-            headers = {"Content-Type": "application/json"}
-            # Send history *before* adding the current user message placeholder
-            backend_history_to_send = current_history[:-1]
-            payload = json.dumps({
-                "message": str(message), # Ensure string
-                "history": backend_history_to_send
-            })
-
-            ai_response_content = "Error: Failed to get response." # Default error
-
-            try:
-                print("Interface Logic: Calling backend...")
-                backend_response = await pyodide_http.pyfetch(
-                    url=NETLIFY_FUNCTION_ENDPOINT,
-                    method="POST",
-                    headers=headers,
-                    body=payload
-                )
-                print(f"Interface Logic: Backend status: {backend_response.status}")
-
-                if backend_response.ok:
-                    data = await backend_response.json()
-                    ai_response_content = data.get("answer", "Error: No 'answer' key in response.")
-                    print(f"Interface Logic: Received AI response: '{ai_response_content[:50]}...'")
-                else:
-                    error_text = await backend_response.string()
-                    print(f"Interface Logic: Error from backend: Status {backend_response.status}, Body: {error_text}")
-                    ai_response_content = f"Error from backend (Status {backend_response.status})"
-
-            except Exception as e:
-                print(f"Interface Logic: Network or other error: {e}")
-                import traceback
-                print(traceback.format_exc())
-                ai_response_content = f"Error contacting backend: {type(e).__name__}"
-
-            # Update the last entry in history with the actual AI response
-            current_history[-1][1] = ai_response_content
-            print(f"Interface Logic: Updated history_state (len {len(current_history)})={current_history}")
-
-            # Format the final history for display
-            final_display_history = format_history_md(current_history)
-
-            # Return: formatted display string, updated history list, empty string (to clear input)
-            return final_display_history, current_history, ""
-
-        # Define the Gradio UI using Blocks for layout and Interface for logic trigger
-        with gr.Blocks(theme=gr.themes.Glass(), css=".message-bot { border-bottom: 1px solid #eee; padding-bottom: 1em; margin-bottom: 1em; }") as demo:
-             gr.Markdown("# Chat with Angela Han AI")
-             gr.Markdown("*(Using gr.Interface workaround)*")
-
-             # State component to store chat history (list of lists: [[user, bot], ...])
-             chatbot_state = gr.State([])
-
-             # Output component to display formatted chat history
-             # Using Markdown with line breaks and allow HTML for basic structure
-             chatbot_display = gr.Markdown(value="*Begin Conversation...*", label="Conversation", elem_classes="chat-display")
-
-             # Input textbox for user message
-             message_input = gr.Textbox(
-                 label="Your Message",
-                 placeholder="Type your message here and press Enter...",
-                 show_label=False, # Cleaner look
-                 autofocus=True
-             )
-
-             # Hidden button or rely on Textbox submit? Let's use Textbox submit.
-             # Send button could be added: send_button = gr.Button("Send")
-
-             # Trigger logic on Textbox submit
-             message_input.submit(
-                 fn=interface_chat_logic,
-                 inputs=[message_input, chatbot_state],
-                 outputs=[chatbot_display, chatbot_state, message_input], # Matches return order
-             )
-
-             # Alternative: Trigger with a button click
-             # send_button.click(
-             #     fn=interface_chat_logic,
-             #     inputs=[message_input, chatbot_state],
-             #     outputs=[chatbot_display, chatbot_state, message_input],
-             # )
-
-        print("Gradio-lite: gr.Blocks/gr.Interface defined. Calling .launch()...")
-
-        # --- Use .launch() on the Blocks object ---
-        demo.launch()
-
-        print("Gradio-lite: .launch() called. UI should appear.")
-
-      </script>
-    </gradio-lite>
-  </body>
+</body>
 </html>
