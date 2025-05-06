@@ -31,7 +31,7 @@ GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY") # Get from Netlify env vars
 # FAISS index is packaged WITH the function, use relative path
 FAISS_INDEX_ZIP_PATH = "faiss_index_google.zip"
 GOOGLE_EMBEDDING_MODEL_NAME = "models/text-embedding-004" # Or your model
-GEMINI_LLM_MODEL_NAME = "gemini-2.5-flash-lite" # Use preferred model (consider function runtime limits)
+GEMINI_LLM_MODEL_NAME = "gemini-2.0-flash-lite" # Use preferred model (consider function runtime limits)
 
 # --- Prompts (Copy VERBATIM from your working bot.py) ---
 # 1. Contextualizer Prompt
