@@ -6,9 +6,10 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0"
     />
-    <title>Minimal Gradio-lite Test (Entrypoint)</title>
+    <title>Official Gradio-lite Minimal Test</title>
 
-    <!-- Using LATEST Gradio-lite and Theme from CDN -->
+    <!-- Load Gradio-lite JS and CSS from CDN (latest) -->
+    <!-- Also load the base Gradio theme -->
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/@gradio/theme/dist/theme.css"
@@ -30,12 +31,35 @@
     </style>
   </head>
   <body>
-    <!--
-      Using the entrypoint attribute.
-      Gradio-lite will fetch app.py, run it using Pyodide,
-      and look for a globally defined gr.Blocks or gr.Interface instance.
-      There is NO inline <script type="pyodide"> tag needed inside.
-    -->
-    <gradio-lite entrypoint="app.py"></gradio-lite>
+    <!-- The Gradio-lite component -->
+    <gradio-lite>
+      <!-- The Python code, nested directly inside -->
+      <script type="pyodide">
+        import gradio as gr
+
+        print("Official Minimal Example: Starting Python code.")
+
+        # Define the simple function
+        def greet(name):
+            return "Hello, " + name + "!"
+
+        # Define the simplest Interface
+        # Assign it to a global variable 'demo' (or any other name)
+        # Gradio-lite automatically finds and mounts the first global
+        # gr.Blocks or gr.Interface instance if mount_gradio_app isn't called.
+        demo = gr.Interface(fn=greet, inputs="textbox", outputs="textbox")
+
+        print("Official Minimal Example: gr.Interface 'demo' created.")
+
+        # NOTE: We are *not* using gr.mount_gradio_app() or async main() here.
+        # We are relying on Gradio-lite's default behavior to find the 'demo' variable.
+        # This removes potential complexities from our previous attempts.
+
+        # Pyodide needs to be kept alive, but Gradio-lite might handle this implicitly
+        # when not using mount_gradio_app. We can add it back if needed, but start without.
+        # import asyncio
+        # await asyncio.sleep(999999)
+      </script>
+    </gradio-lite>
   </body>
 </html>
