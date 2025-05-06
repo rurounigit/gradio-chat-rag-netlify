@@ -9,8 +9,6 @@
     <title>Angela Han AI Chat</title>
 
     <!-- Gradio Lite CDN links -->
-    <!-- We removed the explicit Pyodide script tag here -->
-    <!-- Gradio-lite.js will load its required Pyodide version -->
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/@gradio/lite/dist/lite.css"
@@ -29,104 +27,95 @@
       }
       gradio-lite {
         min-height: 100vh;
-      } /* Ensure it takes full height */
+      }
     </style>
   </head>
   <body>
-    <!-- Gradio-lite component will render the chat interface here -->
-    <gradio-lite>
-      <script type="pyodide">
-        import gradio as gr
-        import json
-        from pyodide.http import pyfetch # For making requests from Pyodide
-        import asyncio
+    <!-- Give the Gradio-lite component an ID -->
+    <gradio-lite id="chatApp"></gradio-lite>
 
-        # Define the path to the Netlify Function backend
-        NETLIFY_FUNCTION_ENDPOINT = "/.netlify/functions/rag-proxy"
+    <script type="pyodide">
+      import gradio as gr
+      import json
+      import asyncio
+      # Explicitly import the http module for pyfetch
+      import pyodide_http
+      pyodide_http.patch_all() # Patches standard library to use pyfetch for requests
 
-        print("Gradio-lite Pyodide environment starting...") # Changed message slightly
+      # Define the path to the Netlify Function backend
+      NETLIFY_FUNCTION_ENDPOINT = "/.netlify/functions/rag-proxy"
 
-        async def call_rag_proxy(message, history):
-            """
-            Called by Gradio ChatInterface. Sends message and history to the
-            Netlify function backend and returns the AI's response.
-            """
-            print(f"Sending message to backend: {message}")
-            print(f"History being sent: {history}") # Gradio provides history as [[user, ai], ...]
+      print("Gradio-lite Pyodide environment starting...")
 
-            headers = {"Content-Type": "application/json"}
-            payload = json.dumps({
-                "message": message,
-                "history": history
-            })
+      async def call_rag_proxy(message, history):
+          print(f"Sending message to backend: {message}")
+          print(f"History being sent: {history}")
 
-            try:
-                response = await pyfetch(
-                    url=NETLIFY_FUNCTION_ENDPOINT,
-                    method="POST",
-                    headers=headers,
-                    body=payload
-                )
+          headers = {"Content-Type": "application/json"}
+          payload = json.dumps({
+              "message": message,
+              "history": history
+          })
 
-                if response.ok:
-                    data = await response.json()
-                    print("Received response from backend:", data)
-                    bot_message = data.get("answer", "Error: No answer received from backend.")
-                    # Gradio ChatInterface expects the function to return the bot's response string
-                    return bot_message
-                else:
-                    # Handle HTTP errors from the backend function
-                    error_text = await response.string()
-                    print(f"Error from backend: Status {response.status}, Body: {error_text}")
-                    error_detail = f"Error: Backend failed (Status {response.status})."
-                    try: # Try to get more detail from the error JSON
-                       error_json = json.loads(error_text)
-                       error_detail += f" Detail: {error_json.get('error', error_text)}"
-                    except:
-                       error_detail += f" Raw: {error_text}"
-                    return error_detail # Display error in chat
+          try:
+              # pyfetch is available after pyodide_http.patch_all() or via from pyodide.http import pyfetch
+              response = await pyodide_http.pyfetch(
+                  url=NETLIFY_FUNCTION_ENDPOINT,
+                  method="POST",
+                  headers=headers,
+                  body=payload
+              )
 
-            except Exception as e:
-                # Handle network errors or other exceptions during the fetch call
-                print(f"Network or other error calling backend: {e}")
-                return f"Error: Could not reach backend. {type(e).__name__}: {e}"
+              if response.ok:
+                  data = await response.json()
+                  print("Received response from backend:", data)
+                  bot_message = data.get("answer", "Error: No answer received from backend.")
+                  return bot_message
+              else:
+                  error_text = await response.string()
+                  print(f"Error from backend: Status {response.status}, Body: {error_text}")
+                  error_detail = f"Error: Backend failed (Status {response.status})."
+                  try:
+                     error_json = json.loads(error_text)
+                     error_detail += f" Detail: {error_json.get('error', error_text)}"
+                  except:
+                     error_detail += f" Raw: {error_text}"
+                  return error_detail
+          except Exception as e:
+              print(f"Network or other error calling backend: {e}")
+              return f"Error: Could not reach backend. {type(e).__name__}: {e}"
 
+      # Define the Gradio interface
+      chat_interface = gr.ChatInterface(
+          fn=call_rag_proxy,
+          title="Chat with Angela Han AI",
+          description="Ask me anything based on my recorded thoughts and experiences. This chat uses LangChain RAG with Gemini, running securely via Netlify.",
+          examples=[
+              "What are your thoughts on community?",
+              "Tell me about jealousy.",
+              "Who is Dan?",
+              "What's your process for writing?"
+          ],
+          chatbot=gr.Chatbot(height=600),
+          textbox=gr.Textbox(placeholder="Type your message here...", container=False, scale=7),
+          retry_btn=None,
+          undo_btn="Delete Previous Turn",
+          clear_btn="Clear Chat",
+      )
 
-        # Define the Gradio interface
-        chat_interface = gr.ChatInterface(
-            fn=call_rag_proxy, # The async function to call
-            title="Chat with Angela Han AI",
-            description="Ask me anything based on my recorded thoughts and experiences. This chat uses LangChain RAG with Gemini, running securely via Netlify.",
-            # Examples can guide users
-            examples=[
-                "What are your thoughts on community?",
-                "Tell me about jealousy.",
-                "Who is Dan?",
-                "What's your process for writing?"
-            ],
-            chatbot=gr.Chatbot(height=600), # Adjust height as needed
-            textbox=gr.Textbox(placeholder="Type your message here...", container=False, scale=7),
-            retry_btn=None, # Simplify UI
-            undo_btn="Delete Previous Turn",
-            clear_btn="Clear Chat",
-        )
+      async def main():
+          print("Waiting a moment before mounting Gradio app...")
+          await asyncio.sleep(0.5) # Keep a small delay
 
-        async def main():
-            # Add a small delay to allow the <gradio-lite> custom element to fully register
-            # and for Pyodide/Gradio base packages to load.
-            print("Waiting a moment before mounting Gradio app...")
-            await asyncio.sleep(0.5) # Increased delay slightly to 0.5s, can adjust
+          print("Attempting to mount Gradio app to #chatApp...")
+          # Explicitly target the <gradio-lite> element by its ID
+          gr.mount_gradio_app(target_id="chatApp", blocks=chat_interface, path="/")
+          print("Gradio ChatInterface defined and mounted. Ready.")
 
-            print("Attempting to mount Gradio app...")
-            gr.mount_gradio_app(app=None, blocks=chat_interface, path="/")
-            print("Gradio ChatInterface defined and mounted. Ready.")
+          await asyncio.sleep(999999)
 
-            # Keep the Pyodide runtime alive
-            await asyncio.sleep(999999)
-
-        # Run the main async function to start the Gradio app mounting
-        asyncio.ensure_future(main())
-      </script>
-    </gradio-lite>
+      # Run the main async function
+      asyncio.ensure_future(main())
+    </script>
   </body>
 </html>
