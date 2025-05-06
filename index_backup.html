@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>Angela Han AI Chat</title>
+
+    <!-- Gradio Lite CDN links -->
+    <!-- lite.js will load its own compatible Pyodide -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@gradio/lite/dist/lite.css"
+    />
+    <script
+      type="module"
+      src="https://cdn.jsdelivr.net/npm/@gradio/lite/dist/lite.js"
+    ></script>
+
+    <style>
+      body {
+        font-family: sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f0f0f0;
+      }
+      gradio-lite {
+        min-height: 100vh; /* Ensure it takes full height */
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+      The <gradio-lite> custom HTML element.
+      The Python code to run is defined in the <script type="pyodide">
+      tag *nested inside* this <gradio-lite> tag.
+    -->
+    <gradio-lite id="chatApp">
+      <script type="pyodide">
+        import gradio as gr
+        import json
+        import asyncio
+
+        # For making HTTP requests from Pyodide
+        import pyodide_http
+        pyodide_http.patch_all() # Essential for robust networking
+
+        # Define the path to your Netlify Function backend
+        NETLIFY_FUNCTION_ENDPOINT = "/.netlify/functions/rag-proxy"
+
+        print("Gradio-lite: Pyodide environment has started.")
+
+        async def call_rag_proxy(message, history):
+            """
+            This function is called by the Gradio ChatInterface when the user sends a message.
+            It sends the message and chat history to your Netlify backend function.
+            """
+            print(f"Gradio-lite: Sending message to backend: '{message}'")
+            print(f"Gradio-lite: History being sent: {history}")
+
+            headers = {"Content-Type": "application/json"}
+            payload = json.dumps({
+                "message": message,
+                "history": history  # Gradio ChatInterface provides history in [[user, ai], ...] format
+            })
+
+            try:
+                response = await pyodide_http.pyfetch(
+                    url=NETLIFY_FUNCTION_ENDPOINT,
+                    method="POST",
+                    headers=headers,
+                    body=payload
+                )
+
+                if response.ok:
+                    data = await response.json()
+                    print("Gradio-lite: Received response from backend:", data)
+                    bot_message = data.get("answer", "Error: No answer received from backend.")
+                    return bot_message # This string will be displayed as the AI's response
+                else:
+                    # Handle HTTP errors from the backend function
+                    error_text = await response.string()
+                    print(f"Gradio-lite: Error from backend: Status {response.status}, Body: {error_text}")
+                    error_detail = f"Error: Backend failed (Status {response.status})."
+                    try:
+                       error_json = json.loads(error_text)
+                       error_detail += f" Detail: {error_json.get('error', error_text)}"
+                    except:
+                       error_detail += f" Raw: {error_text}"
+                    return error_detail # Display a detailed error message in the chat
+            except Exception as e:
+                # Handle network errors or other exceptions during the fetch call
+                print(f"Gradio-lite: Network or other error calling backend: {e}")
+                return f"Error: Could not reach backend. {type(e).__name__}: {e}"
+
+        # Define the Gradio ChatInterface
+        # This component handles the chat UI, history management, and calls `call_rag_proxy`.
+        chat_interface = gr.ChatInterface(
+            fn=call_rag_proxy,
+            title="Chat with Angela Han AI",
+            description="Ask me anything based on my recorded thoughts and experiences. This chat uses LangChain RAG with Gemini, running securely via Netlify.",
+            examples=[
+                "What are your thoughts on community?",
+                "Tell me about jealousy.",
+                "Who is Dan?",
+                "What's your process for writing?"
+            ],
+            chatbot=gr.Chatbot(height=600), # You can adjust the visual height of the chatbox
+            textbox=gr.Textbox(placeholder="Type your message here...", container=False, scale=7),
+            retry_btn=None, # Hides the retry button for a cleaner UI
+            undo_btn="Delete Previous Turn", # Allows undoing the last turn
+            clear_btn="Clear Chat", # Allows clearing the entire chat
+        )
+
+        async def main():
+            """
+            Main asynchronous function to set up and mount the Gradio app.
+            """
+            print("Gradio-lite: Waiting a moment before attempting to mount the app...")
+            # A small delay can help ensure the <gradio-lite> web component is fully ready
+            await asyncio.sleep(0.5) # 0.5 seconds, can be adjusted if needed
+
+            print("Gradio-lite: Attempting to mount Gradio app into element with ID 'chatApp'...")
+            try:
+                gr.mount_gradio_app(
+                    target_id="chatApp",  # Target the <gradio-lite id="chatApp"> tag
+                    blocks=chat_interface, # The Gradio interface to render
+                    path="/"               # Mount at the root path within the Gradio-lite component
+                )
+                print("Gradio-lite: ChatInterface successfully defined and mounted. Ready.")
+            except Exception as e:
+                print(f"Gradio-lite: CRITICAL ERROR during mount_gradio_app: {e}")
+                import traceback
+                print(traceback.format_exc())
+
+
+            # This is necessary to keep the Pyodide runtime (and thus the Gradio app) alive
+            await asyncio.sleep(999999)
+
+        # Schedule the main function to run.
+        # This starts the process of setting up and displaying the Gradio interface.
+        asyncio.ensure_future(main())
+      </script>
+    </gradio-lite>
+  </body>
+</html>
