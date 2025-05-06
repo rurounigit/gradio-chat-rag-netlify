@@ -1,9 +1,2 @@
-# netlify.toml (Simplified for Auto-Detection Test)
-
 [build]
   publish = "."
-  functions = "netlify/functions" # Tell Netlify WHERE to look
-
-# --- REMOVE the [functions."rag-proxy"] block entirely for this test ---
-# We want to see if Netlify auto-detects the Python function
-# based *only* on the directory structure and the [build].functions setting.
