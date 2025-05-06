@@ -1,0 +1,8 @@
+# netlify/functions/rag-proxy/requirements.txt
+langchain>=0.1.0,<0.2.0 # Pin versions based on your bot.py compatibility
+langchain-google-genai
+langchain-community
+langchain-core
+faiss-cpu # Use cpu version, Netlify functions don't have GPUs
+tiktoken
+python-dotenv # Good for local testing, harmless in production
