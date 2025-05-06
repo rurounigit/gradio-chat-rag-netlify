@@ -1,84 +1,120 @@
-# Inside
-<script type="pyodide">
-  in index.html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>Angela Han AI Chat</title>
 
-   import gradio as gr
-   import json
-   from pyodide.http import pyfetch
-   import asyncio
+    <!-- Pyodide and Gradio Lite CDN links -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@gradio/lite/dist/lite.css"
+    />
+    <script
+      type="module"
+      src="https://cdn.jsdelivr.net/npm/@gradio/lite/dist/lite.js"
+    ></script>
 
-   NETLIFY_FUNCTION_ENDPOINT = "/.netlify/functions/rag-proxy"
-   print("Gradio-lite Pyodide environment loading...")
+    <style>
+      body {
+        font-family: sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f0f0f0;
+      }
+      gradio-lite {
+        min-height: 100vh;
+      } /* Ensure it takes full height */
+    </style>
+  </head>
+  <body>
+    <!-- Gradio-lite component will render the chat interface here -->
+    <gradio-lite>
+      <script type="pyodide">
+        import gradio as gr
+        import json
+        from pyodide.http import pyfetch
+        import asyncio
 
-   async def call_rag_proxy(message, history):
-       # ... (your call_rag_proxy function remains the same) ...
-       print(f"Sending message to backend: {message}")
-       print(f"History being sent: {history}")
+        NETLIFY_FUNCTION_ENDPOINT = "/.netlify/functions/rag-proxy"
+        print("Gradio-lite Pyodide environment loading...")
 
-       headers = {"Content-Type": "application/json"}
-       payload = json.dumps({
-           "message": message,
-           "history": history
-       })
+        async def call_rag_proxy(message, history):
+            # ... (your call_rag_proxy function remains the same) ...
+            print(f"Sending message to backend: {message}")
+            print(f"History being sent: {history}")
 
-       try:
-           response = await pyfetch(
-               url=NETLIFY_FUNCTION_ENDPOINT,
-               method="POST",
-               headers=headers,
-               body=payload
-           )
+            headers = {"Content-Type": "application/json"}
+            payload = json.dumps({
+                "message": message,
+                "history": history
+            })
 
-           if response.ok:
-               data = await response.json()
-               print("Received response from backend:", data)
-               bot_message = data.get("answer", "Error: No answer received from backend.")
-               return bot_message
-           else:
-               error_text = await response.string()
-               print(f"Error from backend: Status {response.status}, Body: {error_text}")
-               error_detail = f"Error: Backend failed (Status {response.status})."
-               try:
-                  error_json = json.loads(error_text)
-                  error_detail += f" Detail: {error_json.get('error', error_text)}"
-               except:
-                  error_detail += f" Raw: {error_text}"
-               return error_detail
-       except Exception as e:
-           print(f"Network or other error calling backend: {e}")
-           return f"Error: Could not reach backend. {type(e).__name__}: {e}"
+            try:
+                response = await pyfetch(
+                    url=NETLIFY_FUNCTION_ENDPOINT,
+                    method="POST",
+                    headers=headers,
+                    body=payload
+                )
 
-   chat_interface = gr.ChatInterface(
-       fn=call_rag_proxy,
-       title="Chat with Angela Han AI",
-       description="Ask me anything based on my recorded thoughts and experiences. This chat uses LangChain RAG with Gemini, running securely via Netlify.",
-       examples=[
-           "What are your thoughts on community?",
-           "Tell me about jealousy.",
-           "Who is Dan?",
-           "What's your process for writing?"
-       ],
-       chatbot=gr.Chatbot(height=600),
-       textbox=gr.Textbox(placeholder="Type your message here...", container=False, scale=7),
-       retry_btn=None,
-       undo_btn="Delete Previous Turn",
-       clear_btn="Clear Chat",
-   )
+                if response.ok:
+                    data = await response.json()
+                    print("Received response from backend:", data)
+                    bot_message = data.get("answer", "Error: No answer received from backend.")
+                    return bot_message
+                else:
+                    error_text = await response.string()
+                    print(f"Error from backend: Status {response.status}, Body: {error_text}")
+                    error_detail = f"Error: Backend failed (Status {response.status})."
+                    try:
+                       error_json = json.loads(error_text)
+                       error_detail += f" Detail: {error_json.get('error', error_text)}"
+                    except:
+                       error_detail += f" Raw: {error_text}"
+                    return error_detail
+            except Exception as e:
+                print(f"Network or other error calling backend: {e}")
+                return f"Error: Could not reach backend. {type(e).__name__}: {e}"
 
-   async def main():
-       # Add a small delay to allow the <gradio-lite> custom element to fully register
-       print("Waiting a moment before mounting Gradio app...")
-       await asyncio.sleep(0.1) # Try 0.1 seconds first, can increase if needed
+        chat_interface = gr.ChatInterface(
+            fn=call_rag_proxy,
+            title="Chat with Angela Han AI",
+            description="Ask me anything based on my recorded thoughts and experiences. This chat uses LangChain RAG with Gemini, running securely via Netlify.",
+            examples=[
+                "What are your thoughts on community?",
+                "Tell me about jealousy.",
+                "Who is Dan?",
+                "What's your process for writing?"
+            ],
+            chatbot=gr.Chatbot(height=600),
+            textbox=gr.Textbox(placeholder="Type your message here...", container=False, scale=7),
+            retry_btn=None,
+            undo_btn="Delete Previous Turn",
+            clear_btn="Clear Chat",
+        )
 
-       print("Attempting to mount Gradio app...")
-       # Ensure the `target` for mounting is correct if necessary,
-       # but `app=None` should automatically find the <gradio-lite> tag.
-       gr.mount_gradio_app(app=None, blocks=chat_interface, path="/")
-       print("Gradio ChatInterface defined and mounted. Ready.")
+        async def main():
+            # Add a small delay to allow the <gradio-lite> custom element to fully register
+            print("Waiting a moment before mounting Gradio app...")
+            await asyncio.sleep(0.1) # Try 0.1 seconds first, can increase if needed
 
-       # Keep the Pyodide runtime alive
-       await asyncio.sleep(999999)
+            print("Attempting to mount Gradio app...")
+            # Ensure the `target` for mounting is correct if necessary,
+            # but `app=None` should automatically find the <gradio-lite> tag.
+            gr.mount_gradio_app(app=None, blocks=chat_interface, path="/")
+            print("Gradio ChatInterface defined and mounted. Ready.")
 
-   # Run the main async function
-   asyncio.ensure_future(main())
-</script>
+            # Keep the Pyodide runtime alive
+            await asyncio.sleep(999999)
+
+        # Run the main async function
+        asyncio.ensure_future(main())
+      </script>
+    </gradio-lite>
+  </body>
+</html>
