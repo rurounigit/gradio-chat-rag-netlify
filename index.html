@@ -6,26 +6,20 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0"
     />
-    <title>
-      Minimal Gradio-lite Test (Pinned @gradio/lite v0.8.0)
-    </title>
+    <title>Minimal Gradio-lite Test (Latest CDN)</title>
 
-    <!--
-      Pinning to specific older versions:
-      - @gradio/lite version 0.8.0
-      - @gradio/theme version 0.5.0 (often released in tandem or slightly earlier)
-    -->
+    <!-- Using LATEST Gradio-lite and Theme from CDN -->
     <link
       rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@gradio/theme@0.5.0/dist/theme.css"
+      href="https://cdn.jsdelivr.net/npm/@gradio/theme/dist/theme.css"
     />
     <link
       rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@gradio/lite@0.8.0/dist/lite.css"
+      href="https://cdn.jsdelivr.net/npm/@gradio/lite/dist/lite.css"
     />
     <script
       type="module"
-      src="https://cdn.jsdelivr.net/npm/@gradio/lite@0.8.0/dist/lite.js"
+      src="https://cdn.jsdelivr.net/npm/@gradio/lite/dist/lite.js"
     ></script>
 
     <style>
@@ -40,46 +34,52 @@
       <script type="pyodide">
         import gradio as gr
         import asyncio
+        import micropip # Explicitly import micropip for clarity if needed later
 
-        print("Minimal Test (Pinned @gradio/lite v0.8.0): Pyodide environment starting...")
+        print("Minimal Test (Latest CDN): Pyodide environment starting...")
+        print(f"Minimal Test (Latest CDN): Gradio version: {gr.__version__}") # Log Gradio version
 
         def greet(name):
             if not name:
                 return "Please enter a name!"
-            return f"Hello, {name} from @gradio/lite v0.8.0!"
+            return f"Hello, {name} from Gradio {gr.__version__}!"
 
+        # Define the Gradio Blocks interface
+        # This is stored in the 'minimal_demo' variable
         with gr.Blocks() as minimal_demo:
-            gr.Markdown("## Super Simple Gradio-lite Test")
-            gr.Markdown("Attempting to use `@gradio/lite@0.8.0` and `@gradio/theme@0.5.0`")
-
+            gr.Markdown("## Super Simple Gradio-lite Test (Latest CDN)")
             name_input = gr.Textbox(label="Enter your name", placeholder="e.g., Pyodide User")
             output_greeting = gr.Textbox(label="Greeting", interactive=False)
             greet_button = gr.Button("Greet")
-
             greet_button.click(fn=greet, inputs=name_input, outputs=output_greeting)
 
-        print("Minimal Test (Pinned @gradio/lite v0.8.0): Gradio Blocks defined.")
+        print(f"Minimal Test (Latest CDN): Blocks object 'minimal_demo' created: {type(minimal_demo)}")
 
         async def main():
-            print("Minimal Test (Pinned @gradio/lite v0.8.0): Waiting a moment before mounting...")
-            await asyncio.sleep(0.5)
+            print("Minimal Test (Latest CDN): Main function started. Waiting before mount...")
+            await asyncio.sleep(0.8) # Slightly increased delay, just in case
 
-            print("Minimal Test (Pinned @gradio/lite v0.8.0): Attempting to mount Gradio app into #minimalAppTest...")
+            print("Minimal Test (Latest CDN): Attempting to mount 'minimal_demo' into #minimalAppTest...")
             try:
+                # Ensure the 'blocks' argument is correctly pointing to our defined Blocks object
                 gr.mount_gradio_app(
                     target_id="minimalAppTest",
-                    blocks=minimal_demo,
+                    blocks=minimal_demo,        # Explicitly pass the Blocks instance
                     path="/"
                 )
-                print("Minimal Test (Pinned @gradio/lite v0.8.0): Successfully mounted!")
+                print("Minimal Test (Latest CDN): Mount call completed. Gradio UI should be visible if successful.")
+                print("Minimal Test (Latest CDN): If UI is not visible, check for deeper Gradio errors or hangs.")
             except Exception as e:
-                print(f"Minimal Test (Pinned @gradio/lite v0.8.0): CRITICAL ERROR during mount: {e}")
+                print(f"Minimal Test (Latest CDN): CRITICAL ERROR during gr.mount_gradio_app: {e}")
                 import traceback
+                print("Traceback for mount_gradio_app error:")
                 print(traceback.format_exc())
 
             await asyncio.sleep(999999)
 
+        print("Minimal Test (Latest CDN): Scheduling main function...")
         asyncio.ensure_future(main())
+        print("Minimal Test (Latest CDN): Pyodide script execution finished (main function scheduled).")
       </script>
     </gradio-lite>
   </body>
