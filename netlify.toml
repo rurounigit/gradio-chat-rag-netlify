@@ -1,2 +1,9 @@
+# netlify.toml
 [build]
   publish = "."
+  functions = "netlify/functions"
+
+[functions."rag-proxy"] # Must match the directory name containing rag_proxy.py
+   runtime = "python"
+   # Ensure this path is relative *to the root of the repository*
+   included_files = ["netlify/functions/rag-proxy/faiss_index_google.zip"]
