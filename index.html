@@ -7,25 +7,25 @@
       content="width=device-width, initial-scale=1.0"
     />
     <title>
-      Minimal Gradio-lite Test (Pinned @gradio/lite v0.10.1)
+      Minimal Gradio-lite Test (Pinned @gradio/lite v0.8.0)
     </title>
 
     <!--
-      Pinning to specific older versions of Gradio-lite JS and its theme.
-      Version 0.10.1 for @gradio/lite is an example; other versions could be tried.
-      The @gradio/theme version should ideally correspond to the lite version.
+      Pinning to specific older versions:
+      - @gradio/lite version 0.8.0
+      - @gradio/theme version 0.5.0 (often released in tandem or slightly earlier)
     -->
     <link
       rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@gradio/theme@0.6.0/dist/theme.css"
+      href="https://cdn.jsdelivr.net/npm/@gradio/theme@0.5.0/dist/theme.css"
     />
     <link
       rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@gradio/lite@0.10.1/dist/lite.css"
+      href="https://cdn.jsdelivr.net/npm/@gradio/lite@0.8.0/dist/lite.css"
     />
     <script
       type="module"
-      src="https://cdn.jsdelivr.net/npm/@gradio/lite@0.10.1/dist/lite.js"
+      src="https://cdn.jsdelivr.net/npm/@gradio/lite@0.8.0/dist/lite.js"
     ></script>
 
     <style>
@@ -36,65 +36,49 @@
     </style>
   </head>
   <body>
-    <!-- The <gradio-lite> custom element with an ID for targeting -->
     <gradio-lite id="minimalAppTest">
-      <!--
-        The Python code to be executed by Pyodide is nested inside this script tag.
-        It must be of type "pyodide".
-      -->
       <script type="pyodide">
         import gradio as gr
         import asyncio
 
-        print("Minimal Test (Pinned @gradio/lite v0.10.1): Pyodide environment starting...")
+        print("Minimal Test (Pinned @gradio/lite v0.8.0): Pyodide environment starting...")
 
-        # A very simple Python function for the Gradio interface
         def greet(name):
-            if not name: # Basic validation
+            if not name:
                 return "Please enter a name!"
-            return f"Hello, {name} from @gradio/lite v0.10.1!"
+            return f"Hello, {name} from @gradio/lite v0.8.0!"
 
-        # Define a minimal Gradio interface using gr.Blocks
-        # This is the simplest way to create a layout with components.
         with gr.Blocks() as minimal_demo:
             gr.Markdown("## Super Simple Gradio-lite Test")
-            gr.Markdown("Attempting to use `@gradio/lite@0.10.1` and `@gradio/theme@0.6.0`")
+            gr.Markdown("Attempting to use `@gradio/lite@0.8.0` and `@gradio/theme@0.5.0`")
 
             name_input = gr.Textbox(label="Enter your name", placeholder="e.g., Pyodide User")
-            output_greeting = gr.Textbox(label="Greeting", interactive=False) # Output field
+            output_greeting = gr.Textbox(label="Greeting", interactive=False)
             greet_button = gr.Button("Greet")
 
-            # Define the action for the button click
             greet_button.click(fn=greet, inputs=name_input, outputs=output_greeting)
 
-        print("Minimal Test (Pinned @gradio/lite v0.10.1): Gradio Blocks defined.")
+        print("Minimal Test (Pinned @gradio/lite v0.8.0): Gradio Blocks defined.")
 
         async def main():
-            """
-            Asynchronous function to handle the mounting of the Gradio app.
-            """
-            print("Minimal Test (Pinned @gradio/lite v0.10.1): Waiting a moment before mounting...")
-            # A small delay to potentially help with any race conditions during web component initialization.
+            print("Minimal Test (Pinned @gradio/lite v0.8.0): Waiting a moment before mounting...")
             await asyncio.sleep(0.5)
 
-            print("Minimal Test (Pinned @gradio/lite v0.10.1): Attempting to mount Gradio app into #minimalAppTest...")
+            print("Minimal Test (Pinned @gradio/lite v0.8.0): Attempting to mount Gradio app into #minimalAppTest...")
             try:
                 gr.mount_gradio_app(
-                    target_id="minimalAppTest", # Target the <gradio-lite> element by its ID
-                    blocks=minimal_demo,       # The Gradio Blocks object to render
-                    path="/"                   # Mount at the root path within the component
+                    target_id="minimalAppTest",
+                    blocks=minimal_demo,
+                    path="/"
                 )
-                print("Minimal Test (Pinned @gradio/lite v0.10.1): Successfully mounted!")
+                print("Minimal Test (Pinned @gradio/lite v0.8.0): Successfully mounted!")
             except Exception as e:
-                print(f"Minimal Test (Pinned @gradio/lite v0.10.1): CRITICAL ERROR during mount: {e}")
-                # Try to print a more detailed traceback for debugging
+                print(f"Minimal Test (Pinned @gradio/lite v0.8.0): CRITICAL ERROR during mount: {e}")
                 import traceback
                 print(traceback.format_exc())
 
-            # Keep the Pyodide runtime alive so the app remains interactive
             await asyncio.sleep(999999)
 
-        # Schedule the main function to run
         asyncio.ensure_future(main())
       </script>
     </gradio-lite>
