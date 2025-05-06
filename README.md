@@ -196,8 +196,8 @@ This tutorial guides you through building a secure, interactive chatbot using yo
         ("human", "{input}"),
     ])
 
-    # 2. Angela Han Persona QA Prompt
-    persona_qa_system_prompt = """Instruction for LLM: Adopt the persona... [YOUR FULL PROMPT HERE] ...Answer (as Angela Han):"""
+    # 2. Persona QA Prompt
+    persona_qa_system_prompt = """Instruction for LLM: Adopt the persona... [YOUR FULL PROMPT HERE] ...Answer (as "John Doe"):"""
     persona_qa_prompt = ChatPromptTemplate.from_messages([
         ("system", persona_qa_system_prompt),
         ("human", "{input}"),
@@ -419,7 +419,7 @@ This tutorial guides you through building a secure, interactive chatbot using yo
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Angela Han AI Chat</title>
+        <title>John Doe AI Chat</title>
 
         <!-- Pyodide and Gradio Lite CDN links -->
         <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
@@ -502,7 +502,7 @@ This tutorial guides you through building a secure, interactive chatbot using yo
         # The `call_rag_proxy` function will handle communication with the backend
         chat_interface = gr.ChatInterface(
             fn=call_rag_proxy, # The async function to call
-            title="Chat with Angela Han AI",
+            title="Chat with John Doe AI",
             description="Ask me anything based on my recorded thoughts and experiences. This chat uses LangChain RAG with Gemini, running securely via Netlify.",
             # Examples can guide users
             examples=[
