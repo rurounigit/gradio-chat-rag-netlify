@@ -1,15 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en"> <!-- Added DOCTYPE -->
   <head>
-    <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0"
-    />
-    <title>Angela Han AI Chat (Using .launch())</title>
+    <meta charset="UTF-8" /> <!-- Good practice -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /> <!-- Good practice -->
+    <title>Minimal ChatInterface Test (.launch())</title>
 
     <!-- Load Gradio-lite JS and CSS from CDN (latest) -->
-    <!-- Also load the base Gradio theme -->
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/@gradio/theme/dist/theme.css"
@@ -24,110 +20,46 @@
     ></script>
 
     <style>
-      body {
-        font-family: sans-serif;
-        margin: 0;
-        padding: 0;
-        background-color: #f0f0f0;
-      }
-      gradio-lite {
-        min-height: 100vh; /* Ensure it takes full height */
-      }
+      body { margin: 0; padding: 0; background-color: #f0f0f0; }
+      gradio-lite { min-height: 100vh; }
     </style>
   </head>
   <body>
-    <!--
-      The <gradio-lite> tag contains the Python code.
-      We define the ChatInterface and call .launch() on it directly.
-    -->
     <gradio-lite>
+      <!--
+        Python code based on the working minimal example pattern.
+        Using ChatInterface but with a *synchronous, non-networked* function.
+        Ensure indentation is PERFECTLY preserved.
+      -->
       <script type="pyodide">
-        import gradio as gr
-        import json
-        import asyncio
+import gradio as gr
+# No asyncio or pyodide_http imported yet
 
-        # For making HTTP requests from Pyodide
-        import pyodide_http
-        pyodide_http.patch_all() # Essential for robust networking
+print("Minimal ChatInterface Test: Starting Python code.")
 
-        # Define the path to your Netlify Function backend
-        NETLIFY_FUNCTION_ENDPOINT = "/.netlify/functions/rag-proxy"
+# Define a simple SYNCHRONOUS function that matches ChatInterface signature
+def simple_chat_placeholder(message, history):
+    print(f"Simple Chat Placeholder: Received message='{message}', history={history}")
+    # Just return a fixed string - NO network call
+    return f"Okay, I received '{message}'. Backend call is disabled in this test."
 
-        print("Gradio-lite: Pyodide environment starting (launch() method).")
+# Define the ChatInterface using the placeholder function
+# Assign to a variable for clarity, then call .launch()
+chat_ui = gr.ChatInterface(
+    fn=simple_chat_placeholder,
+    title="Minimal ChatInterface Test",
+    description="Testing ONLY if ChatInterface component loads with .launch()",
+    chatbot=gr.Chatbot(height=500)
+)
 
-        async def call_rag_proxy(message, history):
-            """
-            Sends message and history to the Netlify backend function.
-            """
-            print(f"Gradio-lite: Sending message to backend: '{message}'")
-            # Ensure history is serializable - Gradio should handle this, but good practice
-            serializable_history = list(history)
-            print(f"Gradio-lite: History being sent: {serializable_history}")
+print("Minimal ChatInterface Test: Interface defined. Calling .launch()...")
 
-            headers = {"Content-Type": "application/json"}
-            payload = json.dumps({
-                "message": message,
-                "history": serializable_history
-            })
+# Use the .launch() method that worked for the basic Interface
+chat_ui.launch()
 
-            try:
-                response = await pyodide_http.pyfetch(
-                    url=NETLIFY_FUNCTION_ENDPOINT,
-                    method="POST",
-                    headers=headers,
-                    body=payload
-                )
+print("Minimal ChatInterface Test: .launch() called. UI should appear if successful.")
 
-                if response.ok:
-                    data = await response.json()
-                    print("Gradio-lite: Received response from backend:", data)
-                    bot_message = data.get("answer", "Error: No answer received from backend.")
-                    return bot_message
-                else:
-                    error_text = await response.string()
-                    print(f"Gradio-lite: Error from backend: Status {response.status}, Body: {error_text}")
-                    error_detail = f"Error: Backend failed (Status {response.status})."
-                    try:
-                       error_json = json.loads(error_text)
-                       error_detail += f" Detail: {error_json.get('error', error_text)}"
-                    except:
-                       error_detail += f" Raw: {error_text}"
-                    return error_detail
-            except Exception as e:
-                print(f"Gradio-lite: Network or other error calling backend: {e}")
-                import traceback
-                print(traceback.format_exc())
-                return f"Error: Could not reach backend. {type(e).__name__}: {e}"
-
-        # Define the Gradio ChatInterface
-        # We assign it to a variable, although it might not be strictly necessary
-        # when calling .launch() immediately after.
-        chat_ui = gr.ChatInterface(
-            fn=call_rag_proxy,
-            title="Chat with Angela Han AI",
-            description="Ask me anything based on my recorded thoughts and experiences. This chat uses LangChain RAG with Gemini, running securely via Netlify.",
-            examples=[
-                "What are your thoughts on community?",
-                "Tell me about jealousy.",
-                "Who is Dan?",
-                "What's your process for writing?"
-            ],
-            chatbot=gr.Chatbot(height=600),
-            textbox=gr.Textbox(placeholder="Type your message here...", container=False, scale=7),
-            retry_btn=None,
-            undo_btn="Delete Previous Turn",
-            clear_btn="Clear Chat",
-        )
-
-        print("Gradio-lite: ChatInterface defined. Calling .launch()...")
-
-        # --- Use .launch() directly on the defined interface ---
-        chat_ui.launch()
-
-        print("Gradio-lite: .launch() called. UI should appear.")
-
-        # We likely don't need explicit asyncio.sleep(999999) here either.
-        # Test without it first.
+# No explicit asyncio.sleep(999999) - let's see if .launch() handles it for ChatInterface
 
       </script>
     </gradio-lite>
