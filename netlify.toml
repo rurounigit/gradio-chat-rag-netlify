@@ -1,9 +1,9 @@
-# netlify.toml
+# netlify.toml (Simplified for Auto-Detection Test)
+
 [build]
   publish = "."
-  functions = "netlify/functions"
+  functions = "netlify/functions" # Tell Netlify WHERE to look
 
-[functions."rag-proxy"] # Must match the directory name containing rag_proxy.py
-   runtime = "python"
-   # Ensure this path is relative *to the root of the repository*
-   included_files = ["netlify/functions/rag-proxy/faiss_index_google.zip"]
+# --- REMOVE the [functions."rag-proxy"] block entirely for this test ---
+# We want to see if Netlify auto-detects the Python function
+# based *only* on the directory structure and the [build].functions setting.
